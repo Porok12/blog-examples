@@ -2,11 +2,11 @@
 
 ## Building project
 
-### CMake
+### CLion
 
 Go to `File | Settings | Build, Execution, Deployment | CMake` and set environment variable `PICO_SDK_PATH`
 
-### Manually
+### Manually using CMake
 
 ```bash
 $ mkdir build/

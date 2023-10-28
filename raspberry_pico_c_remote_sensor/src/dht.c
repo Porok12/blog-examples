@@ -12,7 +12,7 @@ int dht_init(void) {
 inline int read_until(bool value) {
     int count = 0;
     while (gpio_get(DHT_PIN) == value) {
-        ++count;
+        count++;
         sleep_us(1);
         if (count > 255) return -1;
     }

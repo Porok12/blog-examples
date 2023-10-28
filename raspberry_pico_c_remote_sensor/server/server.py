@@ -3,6 +3,7 @@ import os
 import socket
 import sqlite3
 import struct
+import pathlib
 from datetime import datetime
 
 import requests
@@ -10,14 +11,15 @@ import requests
 # from influxdb_client_3 import InfluxDBClient3, Point
 
 
-def forward_data(temperature: float, humidity: float) -> None:
+def forward_data(config: argparse.Namespace, temperature: float, humidity: float) -> None:
     # Save measurements to local database
-    connection = sqlite3.connect('/home/pi/sensordata.db')
-    cursor = connection.cursor()
-    cursor.execute('INSERT INTO sensordata VALUES (?, ?, ?)', (temperature, humidity, datetime.now()))
-    connection.commit()
-    cursor.close()
-    connection.cursor()
+    if config.db:
+        connection = sqlite3.connect(config.db)
+        cursor = connection.cursor()
+        cursor.execute('INSERT INTO sensordata VALUES (?, ?, ?)', (temperature, humidity, datetime.now()))
+        connection.commit()
+        cursor.close()
+        connection.cursor()
 
     # Save data to external database
     # token = os.getenv('INFLUXDB_TOKEN')
@@ -34,10 +36,10 @@ def forward_data(temperature: float, humidity: float) -> None:
     # client.close()
 
     # Send notifications
-    data = {temperature, humidity}
+    data={'value1': f'Humidity {humidity:.2f}, Temperature {temperature:.2f}'}
     event = 'sensordata'
     webhooks_key = os.getenv('WEBHOOK_KEY')
-    requests.post(f'https://maker.ifttt.com/trigger/{event}/json/with/key/{webhooks_key}', json=data)
+    requests.post(f'https://maker.ifttt.com/trigger/{event}/with/key/{webhooks_key}', json=data)
 
 
 def main(config: argparse.Namespace) -> None:
@@ -49,32 +51,35 @@ def main(config: argparse.Namespace) -> None:
         server.listen(1)
         print('Listening for client...')
 
-        while True:
-            try:
-                conn, addr = server.accept()
-                print(f"Connected by {addr}")
-                while True:
-                    data = conn.recv(buffer_size)
-                    if len(data) == payload_size:
-                        humidity, temperature = struct.unpack('ff', data)
-                        print(f"Temp: {temperature}, Humidity: {humidity}")
-                        forward_data(temperature, humidity)
-                        if not data:
+        try:
+            while True:
+                try:
+                    conn, addr = server.accept()
+                    print(f"Connected by {addr}")
+                    while True:
+                        data = conn.recv(buffer_size)
+                        if len(data) == payload_size:
+                            humidity, temperature = struct.unpack('ff', data)
+                            print(f"Temp: {temperature}, Humidity: {humidity}")
+                            forward_data(config, temperature, humidity)
+                            if not data:
+                                break
+                        else:
+                            conn.close()
                             break
-                    else:
-                        conn.close()
-                        break
-            except KeyboardInterrupt:
-                print('Exiting...')
-                server.close()
-                break
+                except KeyboardInterrupt:
+                    print('Exiting...')
+                    break
+        finally:
+            server.close()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='TCP server for PICO')
     parser.add_argument('-p', '--port', type=int, default=8008, required=False, help='port on which server is open')
     parser.add_argument('--ip', type=str, default='', required=False,
-                        help='ip on which server is working (default: '')')
+                        help='IP on which server is working (default: '')')
+    parser.add_argument('--db', type=pathlib.Path, required=False, help='SQLite database location')
     args = parser.parse_args()
 
     main(args)

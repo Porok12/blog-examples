@@ -7,6 +7,9 @@
 #include "src/tcp_utils.h"
 #include "src/dht.h"
 
+/**
+ * Additional PIN for debugging
+ */
 #define LED_PIN 22
 
 int init_led(void) {

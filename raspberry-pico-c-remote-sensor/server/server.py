@@ -5,6 +5,8 @@ import sqlite3
 import struct
 import pathlib
 from datetime import datetime
+from psutil import process_iter
+from signal import SIGTERM
 
 import requests
 # You will need to install influxdb3-python to use influxdb
@@ -81,5 +83,11 @@ if __name__ == '__main__':
                         help='IP on which server is working (default: '')')
     parser.add_argument('--db', type=pathlib.Path, required=False, help='SQLite database location')
     args = parser.parse_args()
+
+    # # Make sure port is free
+    # for proc in process_iter():
+    #     for conns in proc.connections(kind='inet'):
+    #         if conns.laddr.port == args.port:
+    #             proc.send_signal(SIGTERM)
 
     main(args)
